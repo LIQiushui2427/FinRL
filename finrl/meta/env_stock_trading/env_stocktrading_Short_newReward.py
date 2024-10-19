@@ -44,20 +44,20 @@ class StockTradingEnv_Short(gym.Env):
         else:
             sharpe = 0
         
-        # Calculate Maximum Drawdown
-        if len(asset_memory) > 1:
-            cumulative_returns = [asset_memory[i] / asset_memory[0] for i in range(len(asset_memory))]
-            running_max = [max(cumulative_returns[:i+1]) for i in range(len(cumulative_returns))]
-            drawdowns = [(running_max[i] - cumulative_returns[i]) / running_max[i] for i in range(len(cumulative_returns))]
-            maxdd = max(drawdowns) if drawdowns else 0
-        else:
-            maxdd = 0
+        # # Calculate Maximum Drawdown
+        # if len(asset_memory) > 1:
+        #     cumulative_returns = [asset_memory[i] / asset_memory[0] for i in range(len(asset_memory))]
+        #     running_max = [max(cumulative_returns[:i+1]) for i in range(len(cumulative_returns))]
+        #     drawdowns = [(running_max[i] - cumulative_returns[i]) / running_max[i] for i in range(len(cumulative_returns))]
+        #     maxdd = max(drawdowns) if drawdowns else 0
+        # else:
+        #     maxdd = 0
         
         # Calculate return
         ret = (end_asset - start_asset) / start_asset - risk_free_rate
         
         # Weighted reward calculation
-        reward = 0.9 * ret + 0.2 * sharpe - 0.1 * maxdd
+        reward = 0.8 * ret + 0.5 * sharpe # - 0.1 * maxdd
         
         return reward
 
@@ -141,6 +141,7 @@ class StockTradingEnv_Short(gym.Env):
         #         self.logger = Logger('results',[CSVOutputFormat])
         # self.reset()
         self._seed()
+        print("StockTradingEnv_Short initialized")
 
     def _sell_stock(self, index, action):
         def _do_sell_normal():

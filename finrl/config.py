@@ -7,7 +7,6 @@ EXP_NAME = {
     "Baseline": "",
     "Custom3Action": "custom3action",
     "CustomRewardFunction": "customrewardfunction",
-    "CustomState": "customstate",
 }
 
 DATA_SAVE_DIR = "datasets"
