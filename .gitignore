@@ -138,7 +138,7 @@ dmypy.json
 .idea
 
 *events.out.tfevents.*
-*.csv
+# *.csv
 *.zip
 *.png
 finrl_test.py
