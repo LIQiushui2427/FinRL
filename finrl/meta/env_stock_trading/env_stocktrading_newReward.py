@@ -16,14 +16,11 @@ matplotlib.use("Agg")
 # from stable_baselines3.common.logger import Logger, KVWriter, CSVOutputFormat
 
 
-
-
-class StockTradingEnv_Short_NewReward(gym.Env):
+class StockTradingEnv_NewReward(gym.Env):
     """A stock trading environment for OpenAI gym"""
 
     metadata = {"render.modes": ["human"]}
-    
-    
+
     def recalculate_reward(self, start_asset, end_asset, asset_memory: list, date_memory, risk_free_rate=0.0017):
         """
         Recalculate reward based on Return and Sharpe Ratio, and Maximum Drawdown
@@ -51,7 +48,6 @@ class StockTradingEnv_Short_NewReward(gym.Env):
         reward = 0.8 * ret + 0.5 * sharpe # - 0.1 * maxdd
         
         return reward
-
     def __init__(
         self,
         df: pd.DataFrame,
@@ -129,13 +125,12 @@ class StockTradingEnv_Short_NewReward(gym.Env):
         #         self.logger = Logger('results',[CSVOutputFormat])
         # self.reset()
         self._seed()
-        print("StockTradingEnv_Short initialized")
 
     def _sell_stock(self, index, action):
         def _do_sell_normal():
             if (
                 self.state[index + 2 * self.stock_dim + 1] != True
-            ):  # check if the stock is able to sell, for simplicity we just add it in techical index
+            ):  # check if the stock is able to sell, for simlicity we just add it in techical index
                 # if self.state[index + 1] > 0: # if we use price<0 to denote a stock is unable to trade in that day, the total asset calculation may be wrong for the price is unreasonable
                 # Sell only if the price is > 0 (no missing data in this particular date)
                 # perform sell action based on the sign of the action
@@ -197,7 +192,7 @@ class StockTradingEnv_Short_NewReward(gym.Env):
                 sell_num_shares = _do_sell_normal()
         else:
             sell_num_shares = _do_sell_normal()
-        print(f"Available selling shares: {sell_num_shares}")
+
         return sell_num_shares
 
     def _buy_stock(self, index, action):
@@ -243,58 +238,6 @@ class StockTradingEnv_Short_NewReward(gym.Env):
                 pass
 
         return buy_num_shares
-    def _long_stock(self, index, action):
-        # Long action is similar to the buy action provided
-        return self._buy_stock(index, action)
-
-    def _short_stock(self, index, action):
-        def _do_short():
-            if (
-                self.state[index + 2 * self.stock_dim + 1] != True
-            ):  # Check if the stock is able to be shorted
-                # Short only if the price is > 0 (no missing data in this particular date)
-                available_amount = self.state[0] // (
-                    self.state[index + 1] * (1 + self.sell_cost_pct[index])
-                )  # When shorting stocks, consider the cost of trading
-
-                # update balance
-                short_num_shares = min(available_amount, action)
-                short_amount = (
-                    self.state[index + 1]
-                    * short_num_shares
-                    * (1 + self.sell_cost_pct[index])
-                )
-                self.state[0] += short_amount  # Balance increases when we short sell
-
-                # Keep track of negative shares to indicate a short position
-                self.state[index + self.stock_dim + 1] -= short_num_shares
-
-                self.cost += (
-                    self.state[index + 1] * short_num_shares * self.sell_cost_pct[index]
-                )
-                self.trades += 1
-            else:
-                short_num_shares = 0
-
-            return short_num_shares
-
-        short_num_shares = _do_short() if self.turbulence_threshold is None else 0
-        return short_num_shares
-
-    def _close_position(self, index):
-        # Closing a position means either buying back a short or selling a long
-        current_shares = self.state[index + self.stock_dim + 1]
-        if current_shares > 0:
-            # If we are holding a long position, sell it to close
-            action = -current_shares  # Equivalent to selling all shares
-            return self._sell_stock(index, action)
-        elif current_shares < 0:
-            # If we are holding a short position, buy it back to close
-            action = -current_shares  # Equivalent to buying back all shares
-            return self._buy_stock(index, action)
-        else:
-            return 0  # No position to close
-
 
     def _make_plot(self):
         plt.plot(self.asset_memory, "r")
@@ -400,20 +343,17 @@ class StockTradingEnv_Short_NewReward(gym.Env):
             argsort_actions = np.argsort(actions)
             sell_index = argsort_actions[: np.where(actions < 0)[0].shape[0]]
             buy_index = argsort_actions[::-1][: np.where(actions > 0)[0].shape[0]]
-            close_index = np.where(actions == 0)[0]  # Close position where action is zero
 
             for index in sell_index:
-                print(f"Num shares before: {self.state[index+self.stock_dim+1]}, take sell action before: {actions[index]}")
+                # print(f"Num shares before: {self.state[index+self.stock_dim+1]}")
+                # print(f'take sell action before : {actions[index]}')
                 actions[index] = self._sell_stock(index, actions[index]) * (-1)
-                print(f"take sell action after: {actions[index]}, Num shares after: {self.state[index+self.stock_dim+1]}")
+                # print(f'take sell action after : {actions[index]}')
+                # print(f"Num shares after: {self.state[index+self.stock_dim+1]}")
 
             for index in buy_index:
-                print(f"take long action: {actions[index]}, Before: {self.state[index+self.stock_dim+1]}")
+                # print('take buy action: {}'.format(actions[index]))
                 actions[index] = self._buy_stock(index, actions[index])
-                print(f"take long action: {actions[index]}, After: {self.state[index+self.stock_dim+1]}")
-            for index in close_index:
-                print(f"take close action: {actions[index]}")
-                actions[index] = self._close_position(index)
 
             self.actions_memory.append(actions)
 
@@ -433,16 +373,16 @@ class StockTradingEnv_Short_NewReward(gym.Env):
             )
             self.asset_memory.append(end_total_asset)
             self.date_memory.append(self._get_date())
-            # if len(self.asset_memory) > 1:
-            #     # print("recalculate_reward")
-            #     # print(self.asset_memory)
-            #     self.reward = self.recalculate_reward(
-            #         start_asset=begin_total_asset, end_asset=end_total_asset, date_memory=self.date_memory, asset_memory=self.asset_memory
-            #     )
-            # else:
-            self.reward = begin_total_asset - end_total_asset
+            self.reward = end_total_asset - begin_total_asset
             self.rewards_memory.append(self.reward)
-            self.reward = self.reward * self.reward_scaling
+            if len(self.asset_memory) > 1:
+                # print("recalculate_reward")
+                # print(self.asset_memory)
+                self.reward = self.recalculate_reward(
+                    start_asset=begin_total_asset, end_asset=end_total_asset, date_memory=self.date_memory, asset_memory=self.asset_memory
+                )
+            else:
+                self.reward = begin_total_asset - end_total_asset
             self.state_memory.append(
                 self.state
             )  # add current state in state_recorder for each step
@@ -615,8 +555,8 @@ class StockTradingEnv_Short_NewReward(gym.Env):
     def save_asset_memory(self):
         date_list = self.date_memory
         asset_list = self.asset_memory
-        print(len(date_list))
-        print(len(asset_list))
+        # print(len(date_list))
+        # print(len(asset_list))
         df_account_value = pd.DataFrame(
             {"date": date_list, "account_value": asset_list}
         )

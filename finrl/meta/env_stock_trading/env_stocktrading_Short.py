@@ -18,39 +18,12 @@ matplotlib.use("Agg")
 
 
 
-class StockTradingEnv_Short_NewReward(gym.Env):
+class StockTradingEnv_Short(gym.Env):
     """A stock trading environment for OpenAI gym"""
 
     metadata = {"render.modes": ["human"]}
     
-    
-    def recalculate_reward(self, start_asset, end_asset, asset_memory: list, date_memory, risk_free_rate=0.0017):
-        """
-        Recalculate reward based on Return and Sharpe Ratio, and Maximum Drawdown
-        Weighted average of the daily return and the Sharpe ratio and the Maximum Drawdown
-        """
-        # Ensure that asset_memory and date_memory have more than one element to perform calculations
-        if len(asset_memory) > 1 and len(date_memory) > 1:
-            # Calculate daily returns using list operations
-            daily_returns = [(asset_memory[i] - asset_memory[i - 1]) / asset_memory[i - 1] for i in range(1, len(asset_memory))]
-        else:
-            daily_returns = [0]
-        
-        # Calculate Sharpe ratio
-        if len(daily_returns) > 1:
-            mean_return = sum(daily_returns) / len(daily_returns)
-            std_return = (sum((x - mean_return) ** 2 for x in daily_returns) / (len(daily_returns) - 1)) ** 0.5
-            sharpe = (4 ** 0.5) * mean_return / std_return if std_return != 0 else 0
-        else:
-            sharpe = 0
-        
-        # Calculate return
-        ret = (end_asset - start_asset) / start_asset - risk_free_rate
-        
-        # Weighted reward calculation
-        reward = 0.8 * ret + 0.5 * sharpe # - 0.1 * maxdd
-        
-        return reward
+
 
     def __init__(
         self,
@@ -433,13 +406,7 @@ class StockTradingEnv_Short_NewReward(gym.Env):
             )
             self.asset_memory.append(end_total_asset)
             self.date_memory.append(self._get_date())
-            # if len(self.asset_memory) > 1:
-            #     # print("recalculate_reward")
-            #     # print(self.asset_memory)
-            #     self.reward = self.recalculate_reward(
-            #         start_asset=begin_total_asset, end_asset=end_total_asset, date_memory=self.date_memory, asset_memory=self.asset_memory
-            #     )
-            # else:
+            
             self.reward = begin_total_asset - end_total_asset
             self.rewards_memory.append(self.reward)
             self.reward = self.reward * self.reward_scaling
